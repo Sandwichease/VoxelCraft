@@ -1,6 +1,8 @@
 // chunk.cpp
 #include "chunk.h"
 #include <cmath>
+#include <glad/glad.h>
+#include <vector>
 
 // le chunk:: devant dit que ce constructeur appartient a la structure chunk
 Chunk::Chunk(int cx, int cz) {
@@ -70,4 +72,124 @@ std::vector<float> positionsFacesDessus(const Chunk &chunk) {
   return position;
 }
 
-int construireMesh(const Chunk &chunk) {}
+void ajouterFace(std::vector<float> &vecteur, const std::vector<float> &face,
+                 int x, int y, int z) {
+  for (size_t i = 0; i < face.size(); i += 6) {
+
+    vecteur.push_back(x + face[i]);
+    vecteur.push_back(y + face[i + 1]);
+    vecteur.push_back(z + face[i + 2]);
+
+    vecteur.push_back(face[i + 3]);
+    vecteur.push_back(face[i + 4]);
+    vecteur.push_back(face[i + 5]);
+  }
+}
+
+std::vector<float> construireMesh(const Chunk &chunk) {
+
+  std::vector<float> vecteur;
+
+  const std::vector<float> FaceHaut = {
+      -0.5f, 0.5f, -0.5f, 1,    0,    1,     0.5f,  0.5f, 0.5f,
+      1,     0,    1,     0.5f, 0.5f, -0.5f, 1,     0,    1,
+
+      -0.5f, 0.5f, -0.5f, 1,    0,    1,     -0.5f, 0.5f, 0.5f,
+      1,     0,    1,     0.5f, 0.5f, 0.5f,  1,     0,    1};
+
+  const std::vector<float> FaceBas = {
+      -0.5f, -0.5f, -0.5f, 1,     0,     0,    0.5f, -0.5f, -0.5f,
+      1,     0,     0,     0.5f,  -0.5f, 0.5f, 1,    0,     0,
+
+      -0.5f, -0.5f, -0.5f, 1,     0,     0,    0.5f, -0.5f, 0.5f,
+      1,     0,     0,     -0.5f, -0.5f, 0.5f, 1,    0,     0};
+
+  const std::vector<float> FaceAvant = {
+      -0.5f, -0.5f, 0.5f, 0,     1,    0,    0.5f, -0.5f, 0.5f,
+      0,     1,     0,    0.5f,  0.5f, 0.5f, 0,    1,     0,
+
+      -0.5f, -0.5f, 0.5f, 0,     1,    0,    0.5f, 0.5f,  0.5f,
+      0,     1,     0,    -0.5f, 0.5f, 0.5f, 0,    1,     0};
+
+  const std::vector<float> FaceArriere = {
+      -0.5f, -0.5f, -0.5f, 0,    0,     1,     0.5f,  0.5f, -0.5f,
+      0,     0,     1,     0.5f, -0.5f, -0.5f, 0,     0,    1,
+
+      -0.5f, -0.5f, -0.5f, 0,    0,     1,     -0.5f, 0.5f, -0.5f,
+      0,     0,     1,     0.5f, 0.5f,  -0.5f, 0,     0,    1};
+
+  const std::vector<float> FaceDroite = {
+      0.5f, -0.5f, -0.5f, 1,    1,     0,    0.5f, 0.5f, 0.5f,
+      1,    1,     0,     0.5f, -0.5f, 0.5f, 1,    1,    0,
+
+      0.5f, -0.5f, -0.5f, 1,    1,     0,    0.5f, 0.5f, -0.5f,
+      1,    1,     0,     0.5f, 0.5f,  0.5f, 1,    1,    0};
+
+  const std::vector<float> FaceGauche = {
+      -0.5f, -0.5f, -0.5f, 0,     1,    1,     -0.5f, -0.5f, 0.5f,
+      0,     1,     1,     -0.5f, 0.5f, 0.5f,  0,     1,     1,
+
+      -0.5f, -0.5f, -0.5f, 0,     1,    1,     -0.5f, 0.5f,  0.5f,
+      0,     1,     1,     -0.5f, 0.5f, -0.5f, 0,     1,     1};
+
+  for (int x = 0; x < 16; x++) {
+    for (int z = 0; z < 16; z++) {
+      for (int y = 0; y < 64; y++) {
+
+        if (!estSolide(chunk, x, y, z))
+          continue;
+
+        int worldX = chunk.chunkX * 16 + x;
+        int worldZ = chunk.chunkZ * 16 + z;
+
+        if (!estSolide(chunk, x, y + 1, z))
+          ajouterFace(vecteur, FaceHaut, worldX, y, worldZ);
+
+        if (!estSolide(chunk, x, y - 1, z))
+          ajouterFace(vecteur, FaceBas, worldX, y, worldZ);
+
+        if (!estSolide(chunk, x, y, z + 1))
+          ajouterFace(vecteur, FaceAvant, worldX, y, worldZ);
+
+        if (!estSolide(chunk, x, y, z - 1))
+          ajouterFace(vecteur, FaceArriere, worldX, y, worldZ);
+
+        if (!estSolide(chunk, x + 1, y, z))
+          ajouterFace(vecteur, FaceDroite, worldX, y, worldZ);
+
+        if (!estSolide(chunk, x - 1, y, z))
+          ajouterFace(vecteur, FaceGauche, worldX, y, worldZ);
+      }
+    }
+  }
+
+  return vecteur;
+}
+
+void envoyerMeshAuGPU(Chunk &chunk) {
+  // on construit les sommets de ce chunk
+  std::vector<float> mesh = construireMesh(chunk);
+
+  // 6 nombres par sommet donc on divise par 6
+  chunk.nombreSommets = mesh.size() / 6;
+
+  // on crée la notice et la boîte
+  glGenVertexArrays(1, &chunk.vao);
+  glGenBuffers(1, &chunk.vbo);
+
+  // on les sélectionne
+  glBindVertexArray(chunk.vao);
+  glBindBuffer(GL_ARRAY_BUFFER, chunk.vbo);
+
+  // on remplit la boîte avec le vecteur
+  glBufferData(GL_ARRAY_BUFFER, mesh.size() * sizeof(float), mesh.data(),
+               GL_STATIC_DRAW);
+
+  // la notice : position puis couleur
+  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *)0);
+  glEnableVertexAttribArray(0);
+
+  glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float),
+                        (void *)(3 * sizeof(float)));
+  glEnableVertexAttribArray(1);
+}

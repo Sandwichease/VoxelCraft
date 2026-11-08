@@ -9,7 +9,6 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <iostream>
-#include <raylib.h>
 #include <string>
 #include <vector>
 
@@ -78,8 +77,8 @@ int main() {
 
   glfwMakeContextCurrent(fenetre);
 
-  // limite la vitesse a celle de l'ecran
-  glfwSwapInterval(1);
+  // les fps
+  glfwSwapInterval(0);
 
   // on charge les fonctions opengl avec glad
   if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
@@ -249,6 +248,14 @@ int main() {
       chunks.emplace_back(cx, cz);
     }
   }
+  // pour chaque chunk on envoie son mesh au gpu une fois
+  for (Chunk &chunk : chunks) {
+    envoyerMeshAuGPU(chunk);
+  }
+  // on affiche la taille du mesh du premier chunk pour verifier le defi
+  std::cout << "taille mesh : " << construireMesh(chunks[0]).size()
+            << std::endl;
+  std::cout << "faces dessus : " << compterFacesDessus(chunks[0]) << std::endl;
   while (!glfwWindowShouldClose(fenetre)) {
 
     // temps ecoule depuis la derniere image
@@ -332,40 +339,19 @@ int main() {
     glUniformMatrix4fv(emplacementProjection, 1, GL_FALSE,
                        glm::value_ptr(projection));
 
-    // on selectionne la notice de lecture des sommets
-    glBindVertexArray(vao);
+    glm::mat4 model = glm::mat4(1.0f);
 
+    glUniformMatrix4fv(emplacementModel, 1, GL_FALSE, glm::value_ptr(model));
     glBeginQuery(GL_PRIMITIVES_GENERATED, triangleQuery);
 
     // on dessine tous les chunks du monde
     for (const Chunk &chunk : chunks) {
-      for (int x = 0; x < 16; x++) {
-        for (int z = 0; z < 16; z++) {
-          for (int y = 0; y < 64; y++) {
 
-            // air : rien a dessiner
-            if (chunk.blocks[x][z][y] == 0)
-              continue;
+      // on sélectionne le VAO de ce chunk
+      glBindVertexArray(chunk.vao);
 
-            // bloc entoure de blocs sur ses 6 cotes : on ne le dessine pas
-            if (estSolide(chunk, x + 1, y, z) &&
-                estSolide(chunk, x - 1, y, z) &&
-                estSolide(chunk, x, y + 1, z) &&
-                estSolide(chunk, x, y - 1, z) &&
-                estSolide(chunk, x, y, z + 1) && estSolide(chunk, x, y, z - 1))
-              continue;
-
-            // on place le cube a sa position dans le monde
-            glm::mat4 model = glm::mat4(1.0f);
-            model = glm::translate(model, glm::vec3(chunk.chunkX * 16 + x, y,
-                                                    chunk.chunkZ * 16 + z));
-
-            glUniformMatrix4fv(emplacementModel, 1, GL_FALSE,
-                               glm::value_ptr(model));
-            glDrawArrays(GL_TRIANGLES, 0, 36);
-          }
-        }
-      }
+      // on dessine tout son mesh
+      glDrawArrays(GL_TRIANGLES, 0, chunk.nombreSommets);
     }
 
     glEndQuery(GL_PRIMITIVES_GENERATED);
