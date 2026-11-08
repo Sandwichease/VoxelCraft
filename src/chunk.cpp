@@ -1,8 +1,11 @@
 // chunk.cpp
 #include "chunk.h"
+#include <algorithm>
 #include <cmath>
 #include <glad/glad.h>
 #include <vector>
+// le bruit de perlin vient de glm pas
+#include <glm/gtc/noise.hpp>
 
 // le chunk:: devant dit que ce constructeur appartient a la structure chunk
 Chunk::Chunk(int cx, int cz) {
@@ -12,10 +15,10 @@ Chunk::Chunk(int cx, int cz) {
   for (int x = 0; x < SIZE; x++) {
     for (int z = 0; z < SIZE; z++) {
 
-      int hauteur = 3 + (int)(2.0f * sin((x + cx * SIZE) * 0.5f) +
-                              2.0f * cos((z + cz * SIZE) * 0.5f));
+      int worldX = chunkX * SIZE + x;
+      int worldZ = chunkZ * SIZE + z;
 
-      for (int y = 0; y < hauteur; y++) {
+      for (int y = 0; y < hauteurTerrain(worldX, worldZ); y++) {
         blocks[x][z][y] = 1;
       }
     }
@@ -192,4 +195,15 @@ void envoyerMeshAuGPU(Chunk &chunk) {
   glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float),
                         (void *)(3 * sizeof(float)));
   glEnableVertexAttribArray(1);
+}
+
+float hauteurTerrain(int worldX, int worldZ) {
+  float amplitude = 40.0f;
+  float frequence = 0.01f;
+  float centre = 30.0f;
+
+  float bruit = glm::perlin(glm::vec2(worldX * frequence, worldZ * frequence));
+
+  int hauteur = centre + bruit * amplitude;
+  return std::clamp(hauteur, 1, 63);
 }

@@ -28,3 +28,4 @@ void envoyerMeshAuGPU(Chunk &chunk);
 std::vector<float> construireMesh(const Chunk &chunk);
 int compterFacesDessus(const Chunk &chunk);
 void ajouterFace(std::vector<float> &vecteur, const std::vector<float> &face);
+float hauteurTerrain(int worldX, int worldZ);

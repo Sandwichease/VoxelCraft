@@ -11,6 +11,8 @@
 #include <iostream>
 #include <string>
 #include <vector>
+// glm a deja un bruit de perlin
+#include <glm/gtc/noise.hpp>
 
 // include les cpp et h
 #include "camera.h"
@@ -125,61 +127,7 @@ int main() {
   glDeleteShader(vertexShader);
   glDeleteShader(fragmentShader);
 
-  // les 3 sommets du triangle : x y z puis r g b
-  // un cube = 6 faces x 2 triangles x 3 sommets = 36 sommets
-  // format : x y z puis r g b
-  // clang-format off
-    float sommets[] = {
-      //    x          y           z        r          g           b
-      // face arriere rouge
-      -0.5f,  -0.5f,   -0.5f,   1.0f, 0.0f, 0.0f,
-      0.5f,   0.5f,    -0.5f,   1.0f, 0.0f, 0.0f,
-      0.5f,  -0.5f,  -0.5f,  1.0f, 0.0f, 0.0f,
-      0.5f,  0.5f,   -0.5f,  1.0f, 0.0f, 0.0f,
-      -0.5f, -0.5f,  -0.5f,  1.0f, 0.0f, 0.0f,
-      -0.5f, 0.5f,   -0.5f,  1.0f, 0.0f, 0.0f,
-
-      // face avant verte
-      -0.5f, -0.5f,  0.5f,  0.0f, 1.0f, 0.0f,
-      0.5f,  -0.5f,  0.5f,  0.0f, 1.0f, 0.0f,
-      0.5f,  0.5f,   0.5f,  0.0f, 1.0f, 0.0f,
-      0.5f,  0.5f,   0.5f,  0.0f, 1.0f, 0.0f,
-      -0.5f, 0.5f,   0.5f,  0.0f, 1.0f, 0.0f,
-      -0.5f, -0.5f,  0.5f,  0.0f, 1.0f, 0.0f,
-
-      // face gauche bleue
-      -0.5f,  0.5f,   0.5f,   0.0f, 0.0f,  1.0f,
-      -0.5f,  0.5f,   -0.5f,  0.0f, 0.0f,  1.0f,
-      -0.5f,  -0.5f,  -0.5f,  0.0f, 0.0f,  1.0f,
-      -0.5f,  -0.5f,  -0.5f,  0.0f, 0.0f,  1.0f,
-      -0.5f,  -0.5f,  0.5f,   0.0f, 0.0f, 1.0f,
-      -0.5f, 0.5f,  0.5f,  0.0f,0.0f, 1.0f,
-
-      // face droite jaune
-  0.5f,  0.5f,  0.5f,  1.0f, 1.0f, 0.0f,
-  0.5f, -0.5f, -0.5f,  1.0f, 1.0f, 0.0f,
-  0.5f,  0.5f, -0.5f,  1.0f, 1.0f, 0.0f,
-  0.5f, -0.5f, -0.5f,  1.0f, 1.0f, 0.0f,
-  0.5f,  0.5f,  0.5f,  1.0f, 1.0f, 0.0f,
-  0.5f, -0.5f,  0.5f,  1.0f, 1.0f, 0.0f,
-
-      // face dessous cyan
-      -0.5f, -0.5f, -0.5f,  0.0f, 1.0f, 1.0f,
-      0.5f,  -0.5f, -0.5f,  0.0f, 1.0f, 1.0f,
-      0.5f,  -0.5f, 0.5f,   0.0f, 1.0f, 1.0f,
-      0.5f,  -0.5f, 0.5f,   0.0f, 1.0f, 1.0f,
-      -0.5f, -0.5f, 0.5f,   0.0f, 1.0f, 1.0f,
-      -0.5f, -0.5f, -0.5f,  0.0f, 1.0f, 1.0f,
-
-      // face dessus magenta
-  -0.5f,  0.5f, -0.5f,  1.0f, 0.0f, 1.0f,
-  0.5f,  0.5f,  0.5f,  1.0f, 0.0f, 1.0f,
-  0.5f,  0.5f, -0.5f,  1.0f, 0.0f, 1.0f,
-  0.5f,  0.5f,  0.5f,  1.0f, 0.0f, 1.0f,
-  -0.5f,  0.5f, -0.5f,  1.0f, 0.0f, 1.0f,
-  -0.5f,  0.5f,  0.5f,  1.0f, 0.0f, 1.0f,
-    };  // creation du VAO et du VBO
-    unsigned int vao, vbo;
+  unsigned int vao, vbo;
   // clang-format on
 
   glGenVertexArrays(1, &vao);
@@ -187,8 +135,6 @@ int main() {
 
   glBindVertexArray(vao);
   glBindBuffer(GL_ARRAY_BUFFER, vbo);
-
-  glBufferData(GL_ARRAY_BUFFER, sizeof(sommets), sommets, GL_STATIC_DRAW);
 
   // attribut 0 = position
   glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *)0);
@@ -200,17 +146,6 @@ int main() {
                         (void *)(3 * sizeof(float)));
 
   glEnableVertexAttribArray(1);
-
-  // position actuelle du triangle
-  float posX = 0.0f;
-  float posY = 0.0f;
-
-  // vitesse de deplacement
-  float vitesse = 0.01f;
-
-  // limites du deplacement
-  const float limiteX = 0.5f;
-  const float limiteY = 0.5f;
 
   // emplacement de la variable decalage dans le shader
   int emplacementDecalage = glGetUniformLocation(programme, "decalage");
@@ -227,9 +162,6 @@ int main() {
 
   // pour mesurer le temps entre deux images
   float dernierTemps = 0.0f;
-  // BOUCLE PRINCIPALE
-  //
-  //
 
   // pour compter les images par seconde
   double dernierAffichage = glfwGetTime();
@@ -243,8 +175,8 @@ int main() {
   std::vector<Chunk> chunks;
   chunks.reserve(361);
 
-  for (int cx = -9; cx <= 9; cx++) {
-    for (int cz = -9; cz <= 9; cz++) {
+  for (int cx = -16; cx <= 16; cx++) {
+    for (int cz = -16; cz <= 16; cz++) {
       chunks.emplace_back(cx, cz);
     }
   }
@@ -256,6 +188,12 @@ int main() {
   std::cout << "taille mesh : " << construireMesh(chunks[0]).size()
             << std::endl;
   std::cout << "faces dessus : " << compterFacesDessus(chunks[0]) << std::endl;
+
+  // on affiche le bruit le long d une ligne
+  for (int i = 0; i < 20; i++) {
+    float a = i * 0.1f;
+    std::cout << glm::perlin(glm::vec2(a, 0.9f)) << std::endl;
+  }
   while (!glfwWindowShouldClose(fenetre)) {
 
     // temps ecoule depuis la derniere image
@@ -269,8 +207,8 @@ int main() {
       glfwSetWindowShouldClose(fenetre, true);
     }
 
-    // deplacement de la camera : 2.5 unites par seconde
-    float vitesseCamera = 2.5f * dt;
+    // deplacement de la camera : 20.5 unites par seconde
+    float vitesseCamera = 20.5f * dt;
 
     // avancer et reculer dans la direction du regard
     if (glfwGetKey(fenetre, GLFW_KEY_W) == GLFW_PRESS)
@@ -287,29 +225,6 @@ int main() {
           glm::normalize(glm::cross(cameraFront, cameraUp)) * vitesseCamera;
     // lecture des evenements
     glfwPollEvents();
-
-    // reinitialisation avec ESPACE
-
-    // gestion du clavier et des limites
-    if (glfwGetKey(fenetre, GLFW_KEY_RIGHT) == GLFW_PRESS && posX < limiteX) {
-      posX += vitesse;
-    }
-
-    if (glfwGetKey(fenetre, GLFW_KEY_LEFT) == GLFW_PRESS && posX > -limiteX) {
-      posX -= vitesse;
-    }
-
-    if (glfwGetKey(fenetre, GLFW_KEY_UP) == GLFW_PRESS && posY < limiteY) {
-      posY += vitesse;
-    }
-
-    if (glfwGetKey(fenetre, GLFW_KEY_DOWN) == GLFW_PRESS && posY > -limiteY) {
-      posY -= vitesse;
-    }
-
-    // verification de collision
-    Collision = (posX >= limiteX || posX <= -limiteX || posY >= limiteY ||
-                 posY <= -limiteY);
 
     // effacement de l'ecran
     glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
@@ -330,8 +245,9 @@ int main() {
     int largeur, hauteur;
     glfwGetFramebufferSize(fenetre, &largeur, &hauteur);
     float ratio = (float)largeur / (float)hauteur;
+    float renderDistance = 10000.0f;
     glm::mat4 projection =
-        glm::perspective(glm::radians(45.0f), ratio, 0.1f, 100.0f);
+        glm::perspective(glm::radians(45.0f), ratio, 0.1f, renderDistance);
 
     // view et projection sont les memes pour tous les cubes
     // donc on les envoie une seule fois avant de dessiner
